@@ -1,0 +1,11 @@
+Sigma ERP for Windows — v1.0.0
+================================
+
+Thank you for purchasing Sigma ERP!
+
+This is a placeholder file. In production this would be the actual
+Windows installer (SigmaERP-Setup-v1.0.0.exe).
+
+To ship the real installer, replace this file in the /public folder
+with your signed .exe and update the download link in
+src/components/DownloadApp.tsx.
