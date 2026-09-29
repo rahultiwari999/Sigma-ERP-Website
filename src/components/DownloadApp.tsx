@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { BarChart3, Boxes, FileCheck2, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { appRelease } from '@/config/brand';
+import { apiFetch } from '@/lib/api';
 
 function WindowsLogo() {
   return (
@@ -11,10 +13,22 @@ function WindowsLogo() {
 }
 
 export function DownloadApp() {
+  const [release, setRelease] = useState(appRelease);
+
+  useEffect(() => {
+    let cancelled = false;
+    void apiFetch<{ release: typeof appRelease }>('/api/public/settings')
+      .then(({ release: latestRelease }) => {
+        if (!cancelled) setRelease(latestRelease);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
+
   function triggerDownload() {
     const link = document.createElement('a');
-    link.href = appRelease.downloadUrl;
-    link.download = 'SigmaERP-Setup-v1.0.0.exe';
+    link.href = release.downloadUrl;
+    link.download = `SigmaERP-Setup-${release.version}.exe`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -55,7 +69,7 @@ export function DownloadApp() {
             Download for Windows
           </Button>
           <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-slate-500">
-            Windows 10 &amp; 11 (64-bit) · {appRelease.version}
+            Windows 10 &amp; 11 (64-bit) · {release.version}
           </p>
         </div>
 

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, Star, ArrowRight } from 'lucide-react';
 import { pricingPlans, type PricingPlan } from '@/config/brand';
 import { Section, SectionLabel, SectionHeading } from '@/components/ui/Section';
 import { Button } from '@/components/ui/Button';
+import { apiFetch } from '@/lib/api';
 
 type BillingCycle = 'monthly' | 'yearly';
 
@@ -59,42 +60,30 @@ function loadRazorpayCheckout() {
   });
 }
 
-async function readApiResponse<T>(
-  response: Response,
-  emptyMessage: string,
-  invalidMessage: string,
-  fallbackMessage: string
-): Promise<T> {
-  const body = await response.text();
-  if (!body) {
-    throw new Error(response.ok ? invalidMessage : emptyMessage);
-  }
-
-  let result: T & { error?: string };
-  try {
-    result = JSON.parse(body) as T & { error?: string };
-  } catch {
-    throw new Error(invalidMessage);
-  }
-
-  if (!response.ok) throw new Error(result.error || fallbackMessage);
-  return result;
-}
-
 export function Pricing() {
-  const [yearly, setYearly] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('yearly');
+  const [plans, setPlans] = useState(pricingPlans);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [checkoutMessage, setCheckoutMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  async function startCheckout(plan: PricingPlan) {
-    if (plan.name === 'Enterprise') {
-      document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' });
-      return;
-    }
+  useEffect(() => {
+    let cancelled = false;
+    void apiFetch<{ pricing: Record<string, { monthly: number; yearly: number }> }>('/api/public/settings')
+      .then(({ pricing }) => {
+        if (cancelled) return;
+        setPlans((current) => current.map((plan) => ({
+          ...plan,
+          monthly: pricing[plan.name]?.monthly ?? plan.monthly,
+          yearly: pricing[plan.name]?.yearly ?? plan.yearly,
+        })));
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
 
+  async function startCheckout(plan: PricingPlan) {
     if (loadingPlan) return;
 
-    const billingCycle: BillingCycle = yearly ? 'yearly' : 'monthly';
     setCheckoutMessage(null);
     setLoadingPlan(plan.name);
 
@@ -102,18 +91,10 @@ export function Pricing() {
       await loadRazorpayCheckout();
       if (!window.Razorpay) throw new Error('Secure checkout is unavailable. Please try again.');
 
-      const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
-      const orderResponse = await fetch(`${apiBaseUrl}/api/payments/create-order`, {
+      const order = await apiFetch<RazorpayOrder>('/api/payments/create-order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ planName: plan.name, billingCycle }),
       });
-      const order = await readApiResponse<RazorpayOrder>(
-        orderResponse,
-        'Payment API returned an empty response. Make sure npm run api is running, then try again.',
-        'Payment API returned an invalid response. Check npm run api, then try again.',
-        'Could not start checkout.'
-      );
       const checkout = new window.Razorpay({
         key: order.keyId,
         amount: order.amount,
@@ -126,17 +107,10 @@ export function Pricing() {
         modal: { ondismiss: () => setLoadingPlan(null) },
         handler: async (payment) => {
           try {
-            const verifyResponse = await fetch(`${apiBaseUrl}/api/payments/verify`, {
+            const verification = await apiFetch<{ verified: boolean; paymentId: string }>('/api/payments/verify', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ ...payment, planName: plan.name, billingCycle }),
             });
-            const verification = await readApiResponse<{ verified: boolean; paymentId: string }>(
-              verifyResponse,
-              'Verification response was empty. Do not pay again yet; restart npm run api and contact support with your payment ID.',
-              'Verification response was invalid. Do not pay again yet; contact support with your payment ID.',
-              'Payment verification failed.'
-            );
             if (!verification.verified) {
               throw new Error('Payment verification failed. Contact support with your payment ID.');
             }
@@ -184,34 +158,24 @@ export function Pricing() {
         </p>
 
         {/* Billing toggle */}
-        <div className="mt-8 inline-flex items-center gap-3 rounded-full border border-slate-200 bg-white p-1 shadow-soft">
-          <button
-            onClick={() => setYearly(false)}
-            className={`rounded-full px-5 py-2 text-sm font-semibold transition-all ${
-              !yearly ? 'bg-brand-600 text-white' : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setYearly(true)}
-            className={`flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold transition-all ${
-              yearly ? 'bg-brand-600 text-white' : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            Yearly
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-              yearly ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700'
-            }`}>
-              Annual billing
-            </span>
-          </button>
+        <div className="mt-8 inline-flex flex-wrap items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-soft">
+          {(['monthly', 'yearly'] as const).map((cycle) => (
+            <button
+              key={cycle}
+              onClick={() => setBillingCycle(cycle)}
+              className={`rounded-md px-4 py-2 text-sm font-semibold capitalize transition-all ${
+                billingCycle === cycle ? 'bg-brand-600 text-white' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {cycle}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Plans */}
       <div className="reveal mt-14 grid gap-6 lg:grid-cols-3">
-        {pricingPlans.map((plan) => (
+        {plans.map((plan) => (
           <div
             key={plan.name}
             className={`relative flex flex-col rounded-3xl border bg-white p-8 shadow-soft transition-all duration-300 hover:shadow-card ${
@@ -237,13 +201,20 @@ export function Pricing() {
             <div className="mb-6">
               <div className="flex items-baseline gap-1">
                 <span className="text-4xl font-bold text-slate-900">
-                  ₹{(yearly ? Math.round(plan.yearly / 12) : plan.monthly).toLocaleString('en-IN')}
+                  ₹{(billingCycle === 'yearly' ? plan.yearly : plan.monthly).toLocaleString('en-IN')}
                 </span>
-                <span className="text-sm text-slate-400">/month</span>
+                <span className="text-sm text-slate-400">
+                  /{billingCycle === 'yearly' ? 'year' : 'month'}
+                </span>
               </div>
-              {yearly && (
+              {billingCycle === 'yearly' && (
                 <p className="mt-1 text-xs text-emerald-600 font-medium">
-                  ₹{plan.yearly.toLocaleString('en-IN')} billed yearly
+                  Billed annually · Save {Math.round((1 - plan.yearly / (plan.monthly * 12)) * 100)}% vs monthly
+                </p>
+              )}
+              {billingCycle === 'monthly' && (
+                <p className="mt-1 text-xs text-slate-500 font-medium">
+                  ₹{plan.monthly.toLocaleString('en-IN')} billed monthly
                 </p>
               )}
             </div>
@@ -257,9 +228,7 @@ export function Pricing() {
             >
               {loadingPlan === plan.name
                 ? 'Opening checkout…'
-                : plan.name === 'Enterprise'
-                  ? 'Contact Sales'
-                  : 'Continue to Payment'}
+                : 'Continue to Payment'}
               <ArrowRight className="h-4 w-4" />
             </Button>
 
@@ -294,7 +263,7 @@ export function Pricing() {
       )}
 
       <p className="reveal mt-8 text-center text-sm text-slate-400">
-        All prices in INR. Prices are placeholders and can be updated anytime.
+        All prices in INR. Yearly plans are billed annually.
       </p>
     </Section>
   );

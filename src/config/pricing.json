@@ -1,14 +1,14 @@
 {
   "Starter": {
-    "monthly": 999,
-    "yearly": 9990
+    "monthly": 699,
+    "yearly": 4999
   },
   "Professional": {
-    "monthly": 2499,
+    "monthly": 999,
     "yearly": 7499
   },
   "Enterprise": {
-    "monthly": 4999,
-    "yearly": 49990
+    "monthly": 1499,
+    "yearly": 11999
   }
 }

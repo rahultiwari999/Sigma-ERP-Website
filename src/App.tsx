@@ -16,10 +16,12 @@ import { DemoCTA } from '@/components/DemoCTA';
 import { DemoForm } from '@/components/DemoForm';
 import { FinalCTA } from '@/components/FinalCTA';
 import { Footer } from '@/components/Footer';
+import { AdminPortal } from '@/components/AdminPortal';
 
 function App() {
   // Global scroll-reveal: observe every element with class "reveal"
   useEffect(() => {
+    if (window.location.pathname === '/admin') return;
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -37,6 +39,9 @@ function App() {
 
     return () => observer.disconnect();
   }, []);
+
+  if (window.location.pathname === '/admin/demo') return <AdminPortal demoMode />;
+  if (window.location.pathname === '/admin') return <AdminPortal />;
 
   return (
     <div className="min-h-screen bg-white">

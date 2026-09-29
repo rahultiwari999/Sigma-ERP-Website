@@ -52,7 +52,7 @@ export function Navbar() {
 
         {/* Desktop actions */}
         <div className="hidden items-center gap-2 lg:flex">
-          <Button variant="ghost" size="sm">Login</Button>
+          <Button variant="ghost" size="sm" onClick={() => window.location.assign('/admin')}>Login</Button>
           <Button
             variant="secondary"
             size="sm"
@@ -63,7 +63,7 @@ export function Navbar() {
           <Button
             variant="primary"
             size="sm"
-            onClick={() => document.getElementById('download')?.scrollIntoView({ behavior: 'smooth' })}
+            onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
           >
             Get Started
             <ArrowRight className="h-4 w-4" />
@@ -100,7 +100,17 @@ export function Navbar() {
             ))}
           </div>
           <div className="mt-3 flex flex-col gap-2 border-t border-slate-200/60 pt-3">
-            <Button variant="secondary" size="md" className="w-full">Login</Button>
+            <Button
+              variant="secondary"
+              size="md"
+              className="w-full"
+              onClick={() => {
+                setOpen(false);
+                window.location.assign('/admin');
+              }}
+            >
+              Login
+            </Button>
             <Button
               variant="secondary"
               size="md"
@@ -118,7 +128,7 @@ export function Navbar() {
               className="w-full"
               onClick={() => {
                 setOpen(false);
-                document.getElementById('download')?.scrollIntoView({ behavior: 'smooth' });
+                document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
               }}
             >
               Get Started

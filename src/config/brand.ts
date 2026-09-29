@@ -269,10 +269,10 @@ export const pricingPlans: PricingPlan[] = [
     yearly: planPricing.Starter.yearly,
     features: [
       'Up to 2 users',
-      'Billing & invoicing',
+      'GST billing & invoicing',
       'Inventory management',
-      'Basic reports',
-      'GST billing',
+      'Basic business reports',
+      'No PDF report exports',
       'Email support',
     ],
     cta: 'Start Free Trial',
@@ -287,6 +287,7 @@ export const pricingPlans: PricingPlan[] = [
       'Up to 10 users',
       'Everything in Starter',
       'Advanced reports & analytics',
+      'PDF report exports',
       'Batch & expiry tracking',
       'Purchase management',
       'Priority support',
@@ -306,7 +307,7 @@ export const pricingPlans: PricingPlan[] = [
       'Data export & API access',
       '24/7 phone support',
     ],
-    cta: 'Contact Sales',
+    cta: 'Continue to Payment',
   },
 ];
 

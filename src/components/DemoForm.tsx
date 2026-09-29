@@ -3,6 +3,7 @@ import { Check, Send, AlertCircle } from 'lucide-react';
 import { contact } from '@/config/brand';
 import { Section, SectionLabel, SectionHeading } from '@/components/ui/Section';
 import { Button } from '@/components/ui/Button';
+import { apiFetch } from '@/lib/api';
 
 const businessTypes = [
   'Medical & Pharma',
@@ -30,6 +31,8 @@ export function DemoForm() {
   });
   const [errors, setErrors] = useState<Errors>({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState('');
 
   function validate(): Errors {
     const e: Errors = {};
@@ -43,12 +46,21 @@ export function DemoForm() {
     return e;
   }
 
-  function handleSubmit(ev: FormEvent) {
+  async function handleSubmit(ev: FormEvent) {
     ev.preventDefault();
     const e = validate();
     setErrors(e);
     if (Object.keys(e).length === 0) {
-      setSubmitted(true);
+      setSubmitting(true);
+      setSubmissionError('');
+      try {
+        await apiFetch('/api/demo-requests', { method: 'POST', body: JSON.stringify(form) });
+        setSubmitted(true);
+      } catch (error) {
+        setSubmissionError(error instanceof Error ? error.message : 'Could not send your request. Please try again.');
+      } finally {
+        setSubmitting(false);
+      }
     }
   }
 
@@ -72,8 +84,7 @@ export function DemoForm() {
           </span>
           <h3 className="text-2xl font-bold text-slate-900">Demo Request Received!</h3>
           <p className="mt-3 text-sm text-slate-600">
-            Your email app can open a prepared demo request. Send the email to
-            contact our team and schedule your personalized demo.
+            Your request has been saved. Our team will contact you to schedule your personalized demo.
           </p>
           <a
             href={emailDraft}
@@ -215,10 +226,13 @@ export function DemoForm() {
                 />
               </div>
 
-              <Button type="submit" variant="primary" size="lg" className="w-full">
-                Request Demo
+              <Button type="submit" variant="primary" size="lg" className="w-full" disabled={submitting}>
+                {submitting ? 'Sending request…' : 'Request Demo'}
                 <Send className="h-4 w-4" />
               </Button>
+              {submissionError && (
+                <p role="alert" className="text-center text-sm text-rose-700">{submissionError}</p>
+              )}
               <p className="text-center text-xs text-slate-400">
                 By submitting, you agree to be contacted about Sigma ERP.
               </p>
